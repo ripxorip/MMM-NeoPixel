@@ -1,0 +1,13 @@
+{
+  "name": "mmm-neopixel",
+  "version": "1.0.0",
+  "description": "The `helloworld` module is one of the default modules of the MagicMirror. It is a simple way to display a static text on the mirror. ## Using the module",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "serialport": "^8.0.6"
+  },
+  "devDependencies": {
+    "electron-rebuild": "^1.8.8"
+  }
+}
