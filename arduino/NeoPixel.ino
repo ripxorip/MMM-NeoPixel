@@ -22,6 +22,23 @@
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT 111
 
+uint32_t current_palette[LED_COUNT];
+
+/* Global variables */
+typedef enum {
+  off_t,
+  red_t,
+  blue_t,
+  pink_t,
+  rainbow_t,
+  twinkle_t,
+  sparkle_t,
+  huebow_t,
+  palette_loop_t
+} loop_type;
+
+loop_type current_loop = palette_loop_t;
+
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 // Argument 1 = Number of pixels in NeoPixel strip
@@ -35,6 +52,40 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 
 // setup() function -- runs once at startup --------------------------------
+void create_hue_palette(long huemin, long huemax)
+{
+  /* Distributed over all pixels */
+  long increment = (huemax - huemin) / (strip.numPixels()/2);
+
+  for (int i = 0; i < strip.numPixels()/2; i++)
+  {
+    int pixelHue = huemin + (i * increment);
+    current_palette[i] = strip.gamma32(strip.ColorHSV(pixelHue));
+  }
+
+  for (int i = strip.numPixels()/2; i < strip.numPixels(); i++)
+  {
+    int pixelHue = huemax - ((i-(strip.numPixels()/2)) * increment);
+    current_palette[i] = strip.gamma32(strip.ColorHSV(pixelHue));
+  }
+}
+
+void create_rgb_palette()
+{
+  long full = strip.numPixels();
+  long half = strip.numPixels()/2;
+
+  for (int i = 0; i < half; i++)
+  {
+    current_palette[i] = strip.Color(100+i, 0, 0);
+  }
+
+  for (int i = half; i < full; i++)
+  {
+    int zero_i = i - half;
+    current_palette[i] = strip.Color(100 + half - zero_i, 0, 0);
+  }
+}
 
 void setup() {
   // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
@@ -48,6 +99,7 @@ void setup() {
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();            // Turn OFF all pixels ASAP
   strip.setBrightness(10); // Set BRIGHTNESS to about 1/5 (max = 255)
+  create_hue_palette(4500, 6000);
 }
 
 // Some functions of our own for creating animated effects -----------------
@@ -128,6 +180,136 @@ void theaterChaseRainbow(int wait) {
   }
 }
 
+void showStrip() {
+ #ifdef ADAFRUIT_NEOPIXEL_H
+   // NeoPixel
+   strip.show();
+ #endif
+ #ifndef ADAFRUIT_NEOPIXEL_H
+   // FastLED
+   FastLED.show();
+ #endif
+}
+
+void setPixel(int Pixel, byte red, byte green, byte blue) {
+ #ifdef ADAFRUIT_NEOPIXEL_H
+   // NeoPixel
+   strip.setPixelColor(Pixel, strip.Color(red, green, blue));
+ #endif
+ #ifndef ADAFRUIT_NEOPIXEL_H
+   // FastLED
+   leds[Pixel].r = red;
+   leds[Pixel].g = green;
+   leds[Pixel].b = blue;
+ #endif
+}
+
+void setAll(byte red, byte green, byte blue) {
+  for(int i = 0; i < LED_COUNT; i++ ) {
+    setPixel(i, red, green, blue);
+  }
+  showStrip();
+}
+
+void TwinkleRandom(int Count, int SpeedDelay, boolean OnlyOne) {
+  setAll(0,0,0);
+ 
+  for (int i=0; i<Count; i++) {
+     setPixel(random(LED_COUNT),random(0,255),random(0,255),random(0,255));
+     showStrip();
+     delay(SpeedDelay);
+     if(OnlyOne) {
+       setAll(0,0,0);
+     }
+   }
+ 
+  delay(SpeedDelay);
+}
+
+void Sparkle(byte red, byte green, byte blue, int SpeedDelay) {
+  int Pixel = random(LED_COUNT);
+  setPixel(Pixel,red,green,blue);
+  showStrip();
+  delay(SpeedDelay);
+  setPixel(Pixel,0,0,0);
+}
+
+// Rainbow cycle along whole strip. Pass delay time (in ms) between frames.
+void Huebow(int wait) {
+  long huemin = 35000L;
+  long huemax = 50000L;
+  /* Distributed over all pixels */
+  long increment = (huemax - huemin) / strip.numPixels();
+
+  for (int i = 0; i < strip.numPixels(); i++)
+  {
+    long offset = i*increment;
+    for (int j = 0; j < strip.numPixels(); j++)
+    {
+      int pixelHue = huemin + offset + j*increment;
+      while (pixelHue > huemax){
+        pixelHue = pixelHue - huemax + huemin;
+      }
+      strip.setPixelColor(j, strip.gamma32(strip.ColorHSV(pixelHue)));
+    }
+    strip.show(); // Update strip with new contents
+    delay(10);  // Pause for a moment
+  }
+}
+
+void run_palette_loop(int wait) {
+  for (int i = 0; i < strip.numPixels(); i++)
+  {
+    for (int j = 0; j < strip.numPixels(); j++)
+    {
+      int offset = (i + j) % strip.numPixels();
+      strip.setPixelColor(j, current_palette[offset]);
+    }
+    strip.show(); // Update strip with new contents
+
+    /* Check if we have new serial data if so leave */
+    if (Serial.available() > 0 )
+      break;
+
+    delay(wait);  // Pause for a moment
+  }
+}
+
+void loop_wrap() {
+  if (current_loop == red_t)
+  {
+    colorWipe(strip.Color(255,   50,   0), 50);
+  }
+  else if (current_loop == blue_t)
+  {
+    colorWipe(strip.Color(50,   50,   255), 50);
+  }
+  else if (current_loop == pink_t)
+  {
+    colorWipe(strip.Color(255,   50,   255), 50);
+  }
+  else if (current_loop == rainbow_t)
+  {
+    rainbow(10);
+  }
+  else if (current_loop == twinkle_t)
+  {
+    TwinkleRandom(20, 100, false);
+  }
+  else if (current_loop == sparkle_t)
+  {
+    Sparkle(0xff, 0xff, 0xff, 0);
+  }
+  else if (current_loop == huebow_t)
+  {
+    Huebow(10);
+  }
+  else if (current_loop == palette_loop_t)
+  {
+    run_palette_loop(100);
+  }
+}
+
 // loop() function -- runs repeatedly as long as board is on ---------------
 
 void loop() {
@@ -135,30 +317,50 @@ void loop() {
   while(Serial.available() > 0 ){
     String str = Serial.readString();
     if(str.indexOf("blue") > -1){
-      colorWipe(strip.Color(50,   50,   255), 50);
+      current_loop = blue_t;
     } 
     else if(str.indexOf("pink") > -1){
-      colorWipe(strip.Color(255,   50,   255), 50);
+      current_loop = pink_t;
     } 
     else if(str.indexOf("red") > -1){
-      colorWipe(strip.Color(255,   50,   0), 50);
+      current_loop = red_t;
     } 
     else if(str.indexOf("bright") > -1){
-  	strip.setBrightness(180); // Set BRIGHTNESS to about 1/5 (max = 255)
-	strip.show();
+      strip.setBrightness(180);
+      strip.show();
     } 
     else if(str.indexOf("dim") > -1){
-  	strip.setBrightness(10); // Set BRIGHTNESS to about 1/5 (max = 255)
-	strip.show();
+      strip.setBrightness(10);
+      strip.show();
     } 
     else if(str.indexOf("clear") > -1){
- 	strip.clear();
-	strip.show();
+      strip.clear();
+      strip.show();
     } 
     else if(str.indexOf("rainbow") > -1){
-      rainbow(10);             // Flowing rainbow cycle along the whole strip
+      current_loop = rainbow_t;
+    } 
+    else if(str.indexOf("twinkle") > -1){
+      current_loop = twinkle_t;
+    } 
+    else if(str.indexOf("sparkle") > -1){
+      current_loop = sparkle_t;
+    } 
+    else if(str.indexOf("huebow") > -1){
+      current_loop = huebow_t;
+    } 
+    else if(str.indexOf("hue_palette") > -1){
+      current_loop = palette_loop_t;
+    } 
+    else if(str.indexOf("hue_red") > -1){
+      create_hue_palette(0, 5000);
+    } 
+    else if(str.indexOf("hue_blue") > -1){
+      create_hue_palette(40000, 50000);
     } 
   }
+
+  loop_wrap();
 
   //colorWipe(strip.Color(50,   50,   255), 50); // Blueis
 
