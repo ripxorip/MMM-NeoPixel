@@ -93,6 +93,7 @@ void setup() {
 #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
   clock_prescale_set(clock_div_1);
 #endif
+  pinMode(8, OUTPUT);
   // END of Trinket-specific code.
   Serial.begin(9600);
 
@@ -336,6 +337,26 @@ void loop() {
     else if(str.indexOf("clear") > -1){
       strip.clear();
       strip.show();
+      current_loop = off_t;
+    } 
+    else if(str.indexOf("power") > -1){
+      digitalWrite(8, HIGH);
+      delay(200);
+      digitalWrite(8, LOW);
+    } 
+    else if(str.indexOf("off") > -1){
+      digitalWrite(8, HIGH);
+      delay(200);
+      digitalWrite(8, LOW);
+      strip.clear();
+      strip.show();
+      current_loop = off_t;
+    } 
+    else if(str.indexOf("on") > -1){
+      digitalWrite(8, HIGH);
+      delay(200);
+      digitalWrite(8, LOW);
+      current_loop = palette_loop_t;
     } 
     else if(str.indexOf("rainbow") > -1){
       current_loop = rainbow_t;
