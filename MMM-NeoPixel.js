@@ -19,5 +19,8 @@ Module.register("MMM-NeoPixel",{
 		if (notification === "NeoPixel") {
 			self.sendSocketNotification('set_state', payload.state);
 		}
+		else if (notification === "SHOW_ALERT") {
+			self.sendSocketNotification('set_state', 'iss_alarm');
+		}
 	},
 });
