@@ -276,6 +276,28 @@ void run_palette_loop(int wait) {
   }
 }
 
+void iss_alarm() {
+  int num_blinks = 5;
+  int og_brightness = strip.getBrightness();
+
+  strip.clear();
+  strip.show();
+  setAll(50,   50,   255);
+
+  for (int i = 0; i < num_blinks; i++)
+  {
+    strip.setBrightness(180);
+    strip.show();
+    delay(300);
+    strip.setBrightness(1);
+    strip.show();
+    delay(300);
+  }
+  strip.clear();
+  strip.setBrightness(og_brightness);
+  strip.show();
+}
+
 void loop_wrap() {
   if (current_loop == red_t)
   {
@@ -379,6 +401,9 @@ void loop() {
     else if(str.indexOf("hue_blue") > -1){
       create_hue_palette(40000, 50000);
     } 
+    else if(str.indexOf("iss_alarm") > -1){
+      iss_alarm();
+    }
   }
 
   loop_wrap();
